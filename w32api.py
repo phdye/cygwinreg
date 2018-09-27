@@ -12,7 +12,7 @@
 # This module provides hooks into the Windows libraries for manipulating
 # the registry.
 
-import exceptions
+import builtins
 from locale import getpreferredencoding
 import re
 from struct import pack, unpack_from
@@ -47,6 +47,13 @@ class FILETIME(Structure):
 PFILETIME = POINTER(FILETIME)
 
 from ctypes import cdll
+# Workaround when cdll.kernel32 is broken
+try:
+	cdll.kernel32
+except OSError:
+	from ctypes import CDLL
+	cdll.kernel32 = CDLL("Kernel32.dll", use_errno=True)
+	cdll.advapi32 = CDLL("advapi32.dll", use_errno=True)
 
 # WINBASEAPI DWORD WINAPI FormatMessageW(DWORD,PCVOID,DWORD,DWORD,LPWSTR,DWORD,
 #                                        va_list*)
@@ -254,13 +261,13 @@ def winerror_to_strerror(winerror):
 
 def wincall(return_code):
     from cygwinreg.constants import ERROR_SUCCESS
-    if not isinstance(return_code, (int, long)):
+    if not isinstance(return_code, int):
         return_code = return_code.value
     if return_code != ERROR_SUCCESS:
         raise WindowsError(return_code)
     return return_code
 
-# We need to provide our own copy of exceptions.Windowsrror, since
+# We need to provide our own copy of builtins.Windowsrror, since
 # Python under Cygwin doesn't have a WindowsError.
 class WindowsError(OSError):
     def __init__(self, winerror, strerror=None, filename=None):
@@ -280,17 +287,17 @@ class WindowsError(OSError):
                                           repr(self.filename))
         else:
             return "[Error %s] %s" % (self.winerror, self.strerror)
-exceptions.WindowsError = WindowsError
+builtins.WindowsError = WindowsError
 
 def py_to_reg(value, typ):
     """Convert a Python object to Registry data.
 
     Returns a ctypes.c_char array.
     """
-    def utf16(basestring):
-        if isinstance(basestring, str):
-            basestring = basestring.decode(getpreferredencoding())
-        return basestring.encode('utf-16-le')
+    def utf16(str):
+        if isinstance(str, str):
+            str = str.decode(getpreferredencoding())
+        return str.encode('utf-16-le')
 
     exception = ValueError("Could not convert the data to the specified type.")
     if typ == REG_DWORD:
@@ -299,10 +306,10 @@ def py_to_reg(value, typ):
         else:
             buf = create_string_buffer(pack('L', value), sizeof(DWORD))
     elif typ in (REG_SZ, REG_EXPAND_SZ):
-        if not isinstance(value, basestring):
+        if not isinstance(value, str):
             raise ValueError("Value must be a string or a unicode object.")
         if value is None:
-            value = u''
+            value = ''
         buf = create_string_buffer(utf16(value))
     elif typ == REG_MULTI_SZ:
         if not hasattr(value, '__iter__'):
@@ -312,14 +319,14 @@ def py_to_reg(value, typ):
         result = []
         count = 0
         for elem in value:
-            if not isinstance(elem, basestring):
+            if not isinstance(elem, str):
                 raise ValueError("Element %d must be a string or a unicode "
                                  "object." % count)
             if elem is None:
-                elem = u''
+                elem = ''
             result.append(utf16(elem))
             count += 1
-        result.append(utf16(u'')) # Terminate the list with an empty string
+        result.append(utf16('')) # Terminate the list with an empty string
         result = '\x00\x00'.join(result)
         buf = create_string_buffer(result, len(result))
     else:
@@ -346,7 +353,7 @@ def reg_to_py(data_buf, data_size, typ):
         typ = typ.value
     if typ == REG_DWORD:
         if data_size == 0:
-            return 0L
+            return 0
         return unpack_from('L', data_buf)[0]
     elif typ in (REG_SZ, REG_EXPAND_SZ):
         # data_buf may or may not have a trailing NULL in the buffer.

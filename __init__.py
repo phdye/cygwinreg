@@ -96,7 +96,7 @@ class PyHKEY(object):
     slots = ('Close', 'Detach', '__enter__', '__exit__', 'handle')
 
     def __init__(self, hkey, null_ok=False):
-        if isinstance(hkey, (int, long)):
+        if isinstance(hkey, int):
             self.hkey = hkey
         elif null_ok and isinstance(hkey, NoneType):
             self.hkey = hkey
@@ -154,7 +154,7 @@ class PyHKEY(object):
     def __int__(self):
         return self.hkey
 
-    def __nonzero__(self):
+    def __bool__(self):
         return bool(self.hkey)
 
     def __repr__(self):
@@ -169,7 +169,7 @@ class PyHKEY(object):
     def make(hkey, null_ok=None):
         if isinstance(hkey, PyHKEY):
             return hkey
-        elif isinstance(hkey, (int, long)):
+        elif isinstance(hkey, int):
             return PyHKEY(hkey)
         elif null_ok and isinstance(hkey, NoneType):
             return PyHKEY(None)
