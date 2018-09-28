@@ -62,7 +62,7 @@ to see what constants are used, and where.
 from ctypes import byref, create_string_buffer, create_unicode_buffer, sizeof
 import errno
 import sys
-from types import NoneType
+NoneType = type(None)
 
 if sys.platform != 'cygwin':
     raise ImportError('Not running under Cygwin')
