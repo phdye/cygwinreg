@@ -362,7 +362,7 @@ def reg_to_py(data_buf, data_size, typ):
         buf = data_buf.raw
         if len(buf) > data_size:
             buf = buf[:data_size]
-        return UTF16LE_NULL.split(buf, 1)[0].decode('utf-16-le')
+        return UTF16LE_NULL.split(buf.decode('utf-16-le'), 1)[0].rstrip('\0')
     elif typ == REG_MULTI_SZ:
         # data_buf may or may not have a trailing NULL in the buffer.
         if data_size % 2:
